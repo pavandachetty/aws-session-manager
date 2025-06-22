@@ -2,7 +2,7 @@ AWS Systems Manager Session Manager:
 
 AWS Systems Manager Session Manager is a fully managed AWS service that allows you to securely connect to your EC2 instances, on-premises servers, and virtual machines without the need to open inbound ports, manage bastion hosts, or SSH keys.
 
-í´‘ Key Features of Session Manager
+ðŸ”‘ Key Features of Session Manager
 | Feature                    | Description                                                                                                            |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **No SSH Needed**          | Connect to EC2 instances without SSH or RDPâ€”purely through AWS console or CLI.                                         |
@@ -21,27 +21,20 @@ Centralized access control and session recording
 
 Cost-effective and simplifies security posture
 
-í·© How It Works
+ðŸ§© How It Works
 Systems Manager Agent (SSM Agent) must be installed and running on the instance.
 
 The instance needs an IAM Role with AmazonSSMManagedInstanceCore policy.
 
 The instance must have internet access or VPC endpoints for Systems Manager.
 
-í³˜ Example Use Cases
+ðŸ“˜ Example Use Cases
 Troubleshooting EC2 instances in a private subnet
 
 Secure access in regulated environments (e.g., PCI-DSS, HIPAA)
 
 Automating admin tasks without remote login
 
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Architecture:
 
-Here's a CloudFormation template that sets up an EC2 instance with AWS Systems Manager Session Manager enabled. It includes:
-
-A VPC, Subnet, Security Group
-
-An IAM Role with AmazonSSMManagedInstanceCore policy
-
-An EC2 instance with the SSM Agent pre-installed (Amazon Linux 2 AMI)
-
+![Architecture](images/architecture.png)

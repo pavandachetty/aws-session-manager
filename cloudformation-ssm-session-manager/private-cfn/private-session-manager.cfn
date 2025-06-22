@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 in Private Subnet using Session Manager via VPC Endpoints (No Internet Required)
+
+Resources:
+
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: SSM-VPC
+
+  MyPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SSM-Private-Subnet
+
+  MyRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: PrivateRouteTable
+
+  MyRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MyPrivateSubnet
+      RouteTableId: !Ref MyRouteTable
+
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow egress for VPC endpoints
+      VpcId: !Ref MyVPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  SSMVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      VpcId: !Ref MyVPC
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref MyPrivateSubnet
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+
+  EC2MessagesVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2messages"
+      VpcId: !Ref MyVPC
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref MyPrivateSubnet
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+
+  SSMMessagesVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      VpcId: !Ref MyVPC
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref MyPrivateSubnet
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+
+  SSMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SSMInstanceRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref SSMRole
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.micro
+      ImageId: !Ref LatestAmiId
+      SubnetId: !Ref MyPrivateSubnet
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      IamInstanceProfile: !Ref InstanceProfile
+      Tags:
+        - Key: Name
+          Value: PrivateSSMInstance
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+
+Outputs:
+  EC2InstanceId:
+    Description: ID of the EC2 instance in private subnet
+    Value: !Ref MyEC2Instance
+
+  SSMCommand:
+    Description: Use this command to start a session
+    Value: !Sub "aws ssm start-session --target ${MyEC2Instance}"
